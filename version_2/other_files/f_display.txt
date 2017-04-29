@@ -1,0 +1,270 @@
+from sys import exit
+from random import randint
+import enemies
+import math
+import time
+
+import toolz
+from settings import *
+
+# //  OVERLAY FOR EACH FLOOR   ///////////////////////////////////////////
+def print_level_bar(player, world):
+    level_text = "LEVEL " + str(world[current_level])  # LEVEL 5
+    if world[store_open] == "open":
+        level_text = "STORE // " + level_text
+    title = margin + level_text + margin + world[final_note] + dashes
+    print title
+    #    LEVEL 1   ///////////////////////////////////////////////////////
+    #   STORE // LEVEL 5   ///////////////////////////////////////////////////////
+
+
+
+    health_icon = "H " * player[health]
+    health2 = "    Player health: (" + str(player[health]) + " hp) " + health_icon
+    title2_dashes_length = len(title)-len(health2)-len(margin)
+    title2_dashes1 = title2_dashes_length * "/"
+    title2 = title2_dashes1 + health2 + margin
+
+    print title2, "\n"
+
+# //////////   STORE    //////////////////////////////////////////////////
+
+def copy_rand_items_add_code(from_dict, to_dict, number):
+    list_order = ["q", "w", "e", "r", "a"]  # this copy is only used here
+    count = 0
+
+    # The dict was converted to list, cus dict does not allow random draw
+    # Create list to represent dict contents
+    from_dict_list = list(from_dict.keys())  # turns dict into list
+    to_dict_list = list(to_dict.keys())
+
+    # if the RedRoom is marked with code:"q" already, copy as is
+    # also remove "q" from list_order so that "q" wont be reused
+    for key, value in from_dict.items():
+        if code in from_dict[key]:
+            to_dict[from_dict[key][code]] = from_dict[key]
+            list_order.remove(from_dict[key][code])
+            from_dict_list.remove(key)
+
+    # Get the length of the from list, so we dont overdraw
+    from_dict_count = len(from_dict_list)  # list will change
+    while count < min(from_dict_count, number):
+        # Randomly select an item from list
+        rand_index = randint(0, len(from_dict_list)-1)
+        key_to_find = from_dict_list[rand_index]
+
+        to_dict[list_order[count + len(to_dict_list)]] = from_dict[key_to_find]
+        count += 1
+        # Delete item from list to prevent it from being redrawn
+        from_dict_list.remove(key_to_find)
+
+    return to_dict
+
+def exclude_owned_skills(skills_owned, skill_set):
+    skill_set2 = filter(lambda x: x not in skills_owned, skill_set)
+    # skill_set2 = {}
+    # for key, value in skill_set.items():
+    #     if key not in skills_owned:
+    #         skill_set2[key] = skill_set[key]
+    return skill_set2
+
+def skill_forsale_make(a_skills, p_skills, s_instants):
+    # compiles a 5 item list for the 5 items available in store
+    skill_forsale = {}
+
+    a_skills2 = exclude_owned_skills(skills_owned, a_skills)
+    # adds 2 active skills to skill_forsale, and gives them order code "q, w"
+    skill_forsale = copy_rand_items_add_code(a_skills2, skill_forsale, active_no)
+
+    # If a skill is already owned, it will not be up for sale in the store
+    p_skills2 = exclude_owned_skills(skills_owned, p_skills)
+    skill_forsale = copy_rand_items_add_code(p_skills2, skill_forsale, passive_no)
+    skill_forsale = copy_rand_items_add_code(s_instants, skill_forsale, instant_no)
+
+    return skill_forsale
+
+def get_max_desc_rows(skill_forsale):
+    max_desc_rows = 1
+    for i in range(0, len(skill_forsale)):  # sometimes less than 5
+        code = list_order[i]
+
+        # # This gets number of rows need for description (min: 1)
+        text_len = float(len(skill_forsale[code][desc]))
+        desc_rows = math.ceil((text_len) / (len(maxlen)-1))
+
+        if desc_rows > max_desc_rows:
+            max_desc_rows = desc_rows
+    return max_desc_rows
+
+def print_skills_forsale(skill_forsale):
+
+    choices_print = []
+    max_desc_rows = get_max_desc_rows(skill_forsale)
+
+    for i in range(0, int(max_desc_rows+7)):
+        choices_print.append("")
+
+    # for code in list_order:
+    for i in range(0, len(skill_forsale)):  # sometimes less than 5
+        code = list_order[i]
+        row_no = 0
+        rooms_cap_part = toolz.add_space("="*len(maxlen), maxlen, "")
+        choices_print[row_no] = choices_print[row_no] + rooms_cap_part + " "
+
+        row_no += 1  # 1
+        title_text = skill_forsale[code][title]
+        title_part = toolz.add_space(title_text, maxlen, "")
+        choices_print[row_no] = choices_print[row_no] + title_part + "|"
+
+        row_no += 1  # 2
+        type_text = skill_forsale[code][skilltype]
+        room2_part = toolz.add_space("(" + type_text + ")", maxlen, "")
+        choices_print[row_no] = choices_print[row_no] + room2_part + "|"
+
+        row_no += 1
+        rooms_space_part = toolz.add_space(" "*len(maxlen), maxlen, "")
+        choices_print[row_no] = choices_print[row_no] + rooms_space_part + "|"
+
+        # max_desc_rows
+        count = 1
+        margin = 1
+        while count <= max_desc_rows:
+            clip_start = (count-1)*(len(maxlen)-margin)
+            clip_end = (count)*(len(maxlen)-margin)
+            text_row = skill_forsale[code][desc][clip_start:clip_end]
+
+            row_no += 1
+            room_part = toolz.add_space(text_row, maxlen, "")
+            choices_print[row_no] = choices_print[row_no] + room_part + "|"
+            count += 1
+
+        row_no += 1
+        rooms_space_part = toolz.add_space(" "*len(maxlen), maxlen, "")
+        choices_print[row_no] = choices_print[row_no] + rooms_space_part + "|"
+        row_no += 1
+        rooms_row5_part = toolz.add_space(code, maxlen, "enter: ")
+        choices_print[row_no] = choices_print[row_no] + rooms_row5_part + "|"
+        row_no += 1
+        rooms_bottom_part = toolz.add_space("="*len(maxlen), maxlen, "")
+        choices_print[row_no] = choices_print[row_no] + rooms_bottom_part + " "
+
+    # Add the leftmost signs
+    choices_print[0] = " " + choices_print[0]
+    for i in range(1, len(choices_print)-1):
+        choices_print[i] = "|" + choices_print[i]
+    choices_print[len(choices_print)-1] = " " + choices_print[len(choices_print)-1]
+
+    # Print the dang thing
+    for i in range(0, len(choices_print)):
+        print choices_print[i]
+
+def calc_monster_attack(current_level, choice_display):
+    # ------------------ASSIGN MONSTER VALUE
+    red_power = randint(-2, 4) + current_level
+    blue_power = randint(-2, 4) + current_level/2
+    yellow_power = randint(2, 4) + current_level
+
+    power = {}
+    power['Red Room'] = red_power
+    power['Blue Room'] = blue_power
+    power['Yellow Room'] = yellow_power
+
+    for code, value in choice_display.items():
+        if len(power) != 0:
+            for room_name, room_power in power.items():
+                if choice_display[code][title] == room_name:
+                    choice_display[code][desc] = power[room_name]
+                    del power[room_name]
+    choice_display['q'][desc] = red_power
+
+    return choice_display
+
+#  ============== ============== ============== ============== ==============
+# 1| Yellow Room  | Red Room     | Red Room     |     Skip     |  Force Cycle |
+# 2|  Monster     |  Monster     |  Monster     |  (Ability)   |  (Ability)   |
+# 3|     Power: 1 |     Power: 1 |     Power: 1 |              |              |
+# 4|              |              |              |              |              |
+# 5|   enter: Q   |   enter: Q   |   enter: Q   |   enter: Q   |   enter: Q   |
+#  ============== ============== ============== ============== ==============
+
+
+
+def rooms_make(rooms_att, options_att, skills_owned): # Make room display
+    choice_display = {}
+
+    # Make dict of 5  - 1,2,3 are rooms
+    choice_display = copy_rand_items_add_code(rooms_att, choice_display, rooms_no)
+    choice_display = copy_rand_items_add_code(options_att, choice_display, options_no)
+
+    current_active_skill = {}
+    for key, value in skills_owned.items():
+        if skills_owned[key][skilltype] == "Active":
+            current_active_skill[key] = value
+
+    choice_display = copy_rand_items_add_code(current_active_skill, choice_display, rm_skills_no)
+    return choice_display
+
+def print_rooms(choice_display):
+    choices_print = []
+    for i in range(0, 7):
+        choices_print.append("")
+
+    for i in range(0, len(choice_display)):
+        code = list_order[i]
+        row_no = 0  # 1 ===========
+        rooms_cap_part = toolz.add_space("="*len(maxlen), maxlen, "")
+        choices_print[row_no] = choices_print[row_no] + rooms_cap_part + " "
+
+        row_no += 1  # 2 Red Room
+        # print "NOW", choice_display
+        title_text = choice_display[code][title]
+        title_part = toolz.add_space(title_text, maxlen, "")
+        # title_part = toolz.add_space(skills_title[code], maxlen, "")
+        choices_print[row_no] = choices_print[row_no] + title_part + "|"
+
+        row_no += 1  #3 (Monster)
+        type_text = choice_display[code][skilltype]
+        if type_text != "":
+            type_text = "(" + type_text + ")"
+        room2_part = toolz.add_space(type_text, maxlen, "")
+        # room2_part = toolz.add_space("(" + skills_type[code] + ")", maxlen, "")
+        choices_print[row_no] = choices_print[row_no] + room2_part + "|"
+
+        power_text = "   Power: "
+        text_row3 = ""
+        if choice_display[code][skilltype] == "Monster":
+            text_row3 = power_text + str(choice_display[code][desc])
+
+        # if choice_display[code][] != "":
+        #     text_row3 = power_text + str(choice_display[code][desc])
+
+        row_no += 1  # 2 Power
+        room3_part = toolz.add_space(text_row3, maxlen, "")
+        choices_print[row_no] = choices_print[row_no] + room3_part + "|"
+
+        row_no += 1
+        rooms_space_part = toolz.add_space(" "*len(maxlen), maxlen, "")
+        choices_print[row_no] = choices_print[row_no] + rooms_space_part + "|"
+
+        row_no += 1
+        rooms_row5_part = toolz.add_space(code, maxlen, "enter: ")
+        choices_print[row_no] = choices_print[row_no] + rooms_row5_part + "|"
+
+        row_no += 1
+        rooms_bottom_part = toolz.add_space("="*len(maxlen), maxlen, "")
+        choices_print[row_no] = choices_print[row_no] + rooms_bottom_part + " "
+
+    # Add the leftmost signs
+    choices_print[0] = " " + choices_print[0]
+    # print len(choices_print)
+    # print choices_print
+    for i in range(1, len(choices_print)-1):
+        choices_print[i] = "|" + choices_print[i]
+        # print i
+    choices_print[len(choices_print)-1] = " " + choices_print[len(choices_print)-1]
+
+    # Print the dang thing
+    for i in range(0, len(choices_print)):
+        print choices_print[i]
+
+    print ""
