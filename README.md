@@ -14,3 +14,8 @@ To Use:
 Notes:
 - It is completely text-based, piloted within terminal
 - I left an issue where the final room final battle is actually just the store
+
+
+History:
+ - version1 was created in October 2016, last updated Dec 2016
+ - version2 was created in January 2016, last updated March 2016
