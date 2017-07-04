@@ -291,11 +291,13 @@ class Map(object):
     def opening_scene(self):
         return self.next_scene(self.start_scene)
 
-player1 = player_class.player_template()
-world1 = world_template()
+    
+if __name__ == "__main__":
+    player1 = player_class.player_template()
+    world1 = world_template()
 
-a_map = Map('start_menu')
-# a_map = Map('fight')
-# a_map = Map('central_corridor')
-a_game = Engine(a_map)
-a_game.play()
+    a_map = Map('start_menu')
+    # a_map = Map('fight')
+    # a_map = Map('central_corridor')
+    a_game = Engine(a_map)
+    a_game.play()
